@@ -1,0 +1,52 @@
+{
+  "name": "@usirin/umut-co-web",
+  "version": "0.0.0",
+  "description": "Personal website of Umut Sirin",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "type:check": "tsc -p ./tsconfig.json",
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --color --progress"
+  },
+  "author": "Umut Sirin <umutsirin1@gmail.com>",
+  "license": "WTFPL",
+  "devDependencies": {
+    "@babel/preset-env": "^7.9.6",
+    "@babel/preset-react": "^7.9.4",
+    "@fullhuman/postcss-purgecss": "^2.1.2",
+    "@mapbox/rehype-prism": "^0.4.0",
+    "@mdx-js/loader": "^1.6.1",
+    "@types/classnames": "^2.2.10",
+    "@types/mdx-js__react": "^1.5.1",
+    "@types/react": "^16.9.34",
+    "@types/react-dom": "^16.9.7",
+    "@types/react-router": "^5.1.7",
+    "@types/react-router-dom": "^5.1.5",
+    "autoprefixer": "^9.7.6",
+    "babel-loader": "^8.1.0",
+    "cross-env": "^7.0.2",
+    "esbuild": "^0.5.11",
+    "html-webpack-plugin": "^4.3.0",
+    "postcss-loader": "^3.0.0",
+    "raw-loader": "^4.0.1",
+    "serve": "^11.3.0",
+    "source-map-loader": "^0.2.4",
+    "ts-loader": "^7.0.2",
+    "typescript": "^3.8.3",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.10.3"
+  },
+  "dependencies": {
+    "@tailwindcss/ui": "^0.3.0",
+    "classnames": "^2.2.6",
+    "css-loader": "^3.5.3",
+    "react": "0.0.0-experimental-e5d06e34b",
+    "react-dom": "0.0.0-experimental-e5d06e34b",
+    "react-router": "^5.1.2",
+    "react-router-dom": "^5.1.2",
+    "reading-time": "^1.2.0",
+    "style-loader": "^1.2.1",
+    "tailwindcss": "^1.4.4"
+  }
+}
