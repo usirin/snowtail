@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "NODE_ENV=development webpack-dev-server --color --progress",
+    "dev": "cross-env NODE_ENV=development webpack-dev-server --color --progress",
     "start": "npm run dev"
   },
   "keywords": [],
@@ -21,6 +21,7 @@
     "@types/react-dom": "^16.9.8",
     "@typescript-eslint/parser": "^4.6.0",
     "babel-jest": "^26.6.1",
+    "cross-env": "^7.0.2",
     "css-loader": "^4.3.0",
     "esbuild": "^0.7.21",
     "esbuild-loader": "^2.4.0",

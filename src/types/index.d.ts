@@ -11,3 +11,8 @@ declare module "*.glb" {
   let url: string;
   export default url;
 }
+
+declare module "*.png" {
+  let url: string;
+  export default url;
+}

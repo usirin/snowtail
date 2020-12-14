@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
-    "lib": ["dom", "es2020"],
+    "lib": ["dom", "es6","es2020"],
     "module": "esnext",
     "moduleResolution": "node",
     "noImplicitAny": true,
