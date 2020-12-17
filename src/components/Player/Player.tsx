@@ -1,6 +1,10 @@
-import { useBox, WorkerApi } from "@react-three/cannon";
-import React, { MutableRefObject, useCallback, useEffect, useRef } from "react";
+import { useBox } from "@react-three/cannon";
+import React, { MutableRefObject, useRef } from "react";
+import { CanvasContext } from "react-three-fiber";
 import { Kimana } from "snowtail/components/Kimana/Kimana";
+import { PlayerApi } from "snowtail/components/Player/models";
+import { JumpDown } from "snowtail/components/Player/states/JumpDown";
+import { JumpUp } from "snowtail/components/Player/states/JumpUp";
 import { GameObject } from "snowtail/engine/GameObject";
 import { useGame } from "snowtail/engine/use-game";
 import { InputManager } from "snowtail/engine/use-input-manager";
@@ -9,32 +13,8 @@ import {
   StateMachineApi,
   useStateMachine,
 } from "snowtail/engine/use-state-machine";
-import { AnimationMixer, Object3D, Event } from "three";
-
-type WorkerVec = WorkerApi["position"];
-type VectorRef = WorkerVec & {
-  get: () => number[];
-};
-
-const useVectorRef = (vec: WorkerVec, initialValue: number[] = [0, 0, 0]) => {
-  const ref = useRef(initialValue);
-  useEffect(() => {
-    vec.subscribe((val) => (ref.current = val));
-  }, [vec]);
-
-  const vectorRef: VectorRef = {
-    ...vec,
-    get: () => ref.current,
-  };
-
-  return vectorRef;
-};
-
-interface PlayerApi {
-  position: VectorRef;
-  rotation: VectorRef;
-  velocity: VectorRef;
-}
+import { useWorkerVector } from "snowtail/engine/use-worker-vector";
+import { AnimationMixer, Object3D } from "three";
 
 const usePlayerPhysics = ({
   scale = [1, 3, 1],
@@ -50,9 +30,9 @@ const usePlayerPhysics = ({
     type: "Dynamic",
   }));
 
-  const pos = useVectorRef(api.position);
-  const rot = useVectorRef(api.rotation);
-  const vel = useVectorRef(api.velocity);
+  const pos = useWorkerVector(api.position);
+  const rot = useWorkerVector(api.rotation);
+  const vel = useWorkerVector(api.velocity);
 
   const player = {
     position: pos,
@@ -63,62 +43,9 @@ const usePlayerPhysics = ({
   return [ref, player];
 };
 
-const isGoingUp = (player: PlayerApi) => {
-  const velocity = player.velocity.get();
-  return +velocity[1].toFixed(2) > 0;
-};
-
-const isGoingDown = (player: PlayerApi) => {
-  const velocity = player.velocity.get();
-  return +velocity[1].toFixed(2) < 0;
-};
-
-class JumpDown implements StateBehavior {
-  private mixer: MutableRefObject<AnimationMixer | undefined>;
-  private api: StateMachineApi | undefined;
-  constructor(mixer: MutableRefObject<AnimationMixer | undefined>) {
-    this.mixer = mixer;
-  }
-
-  onAnimationFinished = () => {
-    this.api?.transition("Idle");
-  };
-
-  onBeforeEnter(api: StateMachineApi) {
-    this.api = api;
-    this.mixer.current?.addEventListener("finished", this.onAnimationFinished);
-  }
-
-  onExit() {
-    this.mixer.current?.removeEventListener(
-      "finished",
-      this.onAnimationFinished,
-    );
-  }
-}
-
-class JumpUp implements StateBehavior {
-  private mixer: MutableRefObject<AnimationMixer | undefined>;
-  private api: StateMachineApi | undefined;
-  constructor(mixer: MutableRefObject<AnimationMixer | undefined>) {
-    this.mixer = mixer;
-  }
-
-  onAnimationFinished = () => {
-    this.api?.transition("JumpDown");
-  };
-
-  onBeforeEnter(api: StateMachineApi) {
-    this.api = api;
-    this.mixer.current?.addEventListener("finished", this.onAnimationFinished);
-  }
-
-  onExit() {
-    this.mixer.current?.removeEventListener(
-      "finished",
-      this.onAnimationFinished,
-    );
-  }
+interface PlayerAnimationState {
+  moving: boolean;
+  jumping: boolean;
 }
 
 interface MoveOptions {
@@ -138,14 +65,17 @@ class Move implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(_: unknown, delta: number, api: StateMachineApi) {
+  update(api: StateMachineApi<PlayerAnimationState>, delta: number): void {
     const moveLeftKey = this.inputManager.getKey("MoveLeft");
     const moveRightKey = this.inputManager.getKey("MoveRight");
     const player = this.player;
+
     if (moveLeftKey.pressed && moveRightKey.pressed) {
-      api.transition("Idle");
+      api.context.moving = false;
+      // api.transition("Idle");
     } else if (!moveLeftKey.pressed && !moveRightKey.pressed) {
-      api.transition("Idle");
+      api.context.moving = false;
+      // api.transition("Idle");
     } else if (moveLeftKey.pressed) {
       const position = player.position.get();
       const newX = position[0] - delta * this.speed;
@@ -166,7 +96,7 @@ class CancelMove implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(_: unknown, delta: number, api: StateMachineApi) {
+  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
     const moveLeftKey = this.inputManager.getKey("MoveLeft");
     const moveRightKey = this.inputManager.getKey("MoveRight");
     if (moveLeftKey.pressed && moveRightKey.pressed) {
@@ -187,14 +117,14 @@ class Idle implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(_: unknown, delta: number, api: StateMachineApi) {
+  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
     const moveLeftKey = this.inputManager.getKey("MoveLeft");
     const moveRightKey = this.inputManager.getKey("MoveRight");
 
     if (moveLeftKey.pressed && moveRightKey.pressed) {
-      return;
+      api.context.moving = false;
     } else if (moveLeftKey.pressed || moveRightKey.pressed) {
-      api.transition("Walk");
+      api.context.moving = true;
     }
   }
 }
@@ -206,10 +136,10 @@ class TriggerJump implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(_: unknown, delta: number, api: StateMachineApi) {
+  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
     const jumpKey = this.inputManager.getKey("Jump");
     if (jumpKey.pressed) {
-      api.transition("JumpUp");
+      api.context.jumping = true;
     }
   }
 }
@@ -222,10 +152,21 @@ export const Player: React.FC = () => {
   const [ref, player] = usePlayerPhysics();
   const mixerRef = useRef<AnimationMixer | undefined>();
 
-  const [state] = useStateMachine({
+  const [state] = useStateMachine<PlayerAnimationState>({
     initialState: "JumpDown",
+    context: {
+      moving: false,
+      jumping: false,
+    },
     states: {
       Idle: {
+        update: (api) => {
+          if (api.context.moving) {
+            api.transition("Walk");
+          } else if (api.context.jumping) {
+            api.transition("JumpUp");
+          }
+        },
         behaviors: [
           new Idle({ inputManager: input }),
           new TriggerJump({ inputManager: input }),

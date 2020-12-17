@@ -5,36 +5,45 @@ export interface StateBehavior {
   onBeforeEnter?: (api: StateMachineApi) => void;
   onEnter?: (api: StateMachineApi) => void;
   update?: (
-    context: CanvasContext,
-    delta: number,
     api: StateMachineApi,
+    delta: number,
+    context: CanvasContext,
   ) => void;
   onExit?: (api: StateMachineApi) => void;
 }
 
 interface StateConfig {
   behaviors: StateBehavior[];
+  update?: (
+    api: StateMachineApi,
+    delta: number,
+    context: CanvasContext,
+  ) => void;
 }
 
-interface StateMachineConfig {
+interface StateMachineConfig<TContext = any> {
   initialState: string;
   states: Record<string, StateConfig>;
+  context: TContext;
 }
 
-export interface StateMachineApi {
+export interface StateMachineApi<TContext = any> {
+  context: TContext;
   transition: (nextState: string) => void;
 }
 
-export function useStateMachine(
-  config: StateMachineConfig,
-): [string, StateMachineApi] {
+export function useStateMachine<TContext = any>(
+  config: StateMachineConfig<TContext>,
+): [string, StateMachineApi<TContext>] {
   const [states] = useState(() => config.states);
   const [currentState, setCurrentState] = useState(() => config.initialState);
+  const [context] = useState(() => config.context);
 
   const isTransitioning = useRef(false);
 
   const api = useMemo<StateMachineApi>(
     () => ({
+      context,
       transition: (state: string) => {
         isTransitioning.current = true;
         console.log({ to: state, from: currentState });
@@ -52,7 +61,7 @@ export function useStateMachine(
         setCurrentState(state);
       },
     }),
-    [currentState, states],
+    [context, currentState, states],
   );
 
   useEffect(() => {
@@ -61,6 +70,7 @@ export function useStateMachine(
     behaviors.forEach((behavior) => {
       behavior.onBeforeEnter?.(api);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config.initialState, states]);
 
   useEffect(() => {
@@ -78,8 +88,10 @@ export function useStateMachine(
 
     const state = states[currentState];
     for (let behavior of state.behaviors) {
-      behavior.update?.(context, delta, api);
+      behavior.update?.(api, delta, context);
     }
+
+    state.update?.(api, delta, context);
   });
 
   return [currentState, api];

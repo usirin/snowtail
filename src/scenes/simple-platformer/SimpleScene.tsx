@@ -7,7 +7,7 @@ import {
   Kimana,
   AnimationAction as KimanaActions,
 } from "snowtail/components/Kimana/Kimana";
-import { Player } from "snowtail/components/Player";
+import { Player } from "snowtail/components/Player/Player";
 import { GameObject } from "snowtail/engine/GameObject";
 import { useGame } from "snowtail/engine/use-game";
 

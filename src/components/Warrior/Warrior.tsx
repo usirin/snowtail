@@ -8,8 +8,8 @@ import { useGLTF } from "@react-three/drei/useGLTF";
 
 import { GLTF } from "three/examples/jsm/loaders/GLTFLoader";
 import model from "./Warrior.glb";
-import textureURL from "./Warrior_Texture.png";
-import swordTextureURL from "./Warrior_Sword_Texture.png";
+import textureURL from "../Warrior_Texture.png";
+import swordTextureURL from "../Warrior_Sword_Texture.png";
 
 type GLTFResult = GLTF & {
   nodes: {
