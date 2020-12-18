@@ -1,9 +1,12 @@
 import { useBox } from "@react-three/cannon";
 import React, { MutableRefObject, useRef } from "react";
-import { CanvasContext } from "react-three-fiber";
-import { Kimana } from "snowtail/components/Kimana/Kimana";
+import {
+  Kimana,
+  AnimationAction as KimanaAnimationAction,
+} from "snowtail/components/Kimana/Kimana";
 import { PlayerApi } from "snowtail/components/Player/models";
 import { JumpDown } from "snowtail/components/Player/states/JumpDown";
+import { JumpPrep } from "snowtail/components/Player/states/JumpPrep";
 import { JumpUp } from "snowtail/components/Player/states/JumpUp";
 import { GameObject } from "snowtail/engine/GameObject";
 import { useGame } from "snowtail/engine/use-game";
@@ -15,6 +18,7 @@ import {
 } from "snowtail/engine/use-state-machine";
 import { useWorkerVector } from "snowtail/engine/use-worker-vector";
 import { AnimationMixer, Object3D } from "three";
+import { useTweaks } from "use-tweaks";
 
 const usePlayerPhysics = ({
   scale = [1, 3, 1],
@@ -34,10 +38,11 @@ const usePlayerPhysics = ({
   const rot = useWorkerVector(api.rotation);
   const vel = useWorkerVector(api.velocity);
 
-  const player = {
+  const player: PlayerApi = {
     position: pos,
     rotation: rot,
     velocity: vel,
+    applyForce: (force, point) => api.applyForce(force, point),
   };
 
   return [ref, player];
@@ -77,32 +82,17 @@ class Move implements StateBehavior {
       api.context.moving = false;
       // api.transition("Idle");
     } else if (moveLeftKey.pressed) {
+      api.context.moving = true;
       const position = player.position.get();
       const newX = position[0] - delta * this.speed;
       player.position.set(newX, position[1], position[2]);
       player.rotation.set(0, -Math.PI / 2, 0);
     } else if (moveRightKey.pressed) {
+      api.context.moving = true;
       const position = player.position.get();
       const newX = position[0] + delta * this.speed;
       player.position.set(newX, position[1], position[2]);
       player.rotation.set(0, Math.PI / 2, 0);
-    }
-  }
-}
-
-class CancelMove implements StateBehavior {
-  private readonly inputManager: InputManager;
-  constructor({ inputManager }: { inputManager: InputManager }) {
-    this.inputManager = inputManager;
-  }
-
-  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
-    const moveLeftKey = this.inputManager.getKey("MoveLeft");
-    const moveRightKey = this.inputManager.getKey("MoveRight");
-    if (moveLeftKey.pressed && moveRightKey.pressed) {
-      api.transition("Idle");
-    } else if (!moveLeftKey.pressed && !moveRightKey.pressed) {
-      api.transition("Idle");
     }
   }
 }
@@ -117,7 +107,7 @@ class Idle implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
+  update(api: StateMachineApi): void {
     const moveLeftKey = this.inputManager.getKey("MoveLeft");
     const moveRightKey = this.inputManager.getKey("MoveRight");
 
@@ -136,11 +126,8 @@ class TriggerJump implements StateBehavior {
     this.inputManager = inputManager;
   }
 
-  update(api: StateMachineApi, delta: number, context: CanvasContext): void {
-    const jumpKey = this.inputManager.getKey("Jump");
-    if (jumpKey.pressed) {
-      api.context.jumping = true;
-    }
+  update(api: StateMachineApi): void {
+    api.context.jumping = this.inputManager.getKey("Jump").pressed;
   }
 }
 
@@ -151,6 +138,12 @@ export const Player: React.FC = () => {
 
   const [ref, player] = usePlayerPhysics();
   const mixerRef = useRef<AnimationMixer | undefined>();
+
+  const tweaks = useTweaks({
+    regularMoveSpeed: 5,
+    jumpForce: 5,
+    jumpMoveSpeed: 3,
+  });
 
   const [state] = useStateMachine<PlayerAnimationState>({
     initialState: "JumpDown",
@@ -164,7 +157,7 @@ export const Player: React.FC = () => {
           if (api.context.moving) {
             api.transition("Walk");
           } else if (api.context.jumping) {
-            api.transition("JumpUp");
+            api.transition("JumpPrep");
           }
         },
         behaviors: [
@@ -173,22 +166,50 @@ export const Player: React.FC = () => {
         ],
       },
       Walk: {
+        update: (api) => {
+          if (api.context.jumping) {
+            api.transition("JumpPrep");
+          } else if (!api.context.moving) {
+            api.transition("Idle");
+          }
+        },
         behaviors: [
-          new Move({ inputManager: input, player, speed: 5 }),
+          new Move({
+            inputManager: input,
+            player,
+            speed: tweaks.regularMoveSpeed,
+          }),
           new TriggerJump({ inputManager: input }),
-          new CancelMove({ inputManager: input }),
+        ],
+      },
+      JumpPrep: {
+        behaviors: [
+          new JumpPrep(mixerRef),
+          new Move({
+            player,
+            inputManager: input,
+            speed: tweaks.jumpMoveSpeed,
+          }),
         ],
       },
       JumpUp: {
         behaviors: [
-          new JumpUp(mixerRef),
-          new Move({ player, inputManager: input, speed: 3 }),
+          new JumpUp({ mixer: mixerRef, player, jumpForce: 5 }),
+          new Move({
+            player,
+            inputManager: input,
+            speed: tweaks.jumpMoveSpeed,
+          }),
         ],
       },
       JumpDown: {
         behaviors: [
-          new JumpDown(mixerRef),
-          new Move({ player, inputManager: input, speed: 3 }),
+          new JumpDown({ mixer: mixerRef, player }),
+          new Move({
+            player,
+            inputManager: input,
+            speed: tweaks.jumpMoveSpeed,
+          }),
         ],
       },
     },
@@ -198,9 +219,13 @@ export const Player: React.FC = () => {
 
   return (
     <GameObject ref={ref}>
+      <mesh>
+        <boxBufferGeometry args={[1, 3, 1]} />
+        <meshPhongMaterial wireframe color="rebeccapurple" attach="material" />
+      </mesh>
       <Kimana
         onAnimationMixerCreated={(mixer) => (mixerRef.current = mixer)}
-        action={state as "Idle" | "Walk" | "JumpUp" | "JumpDown"}
+        action={state as KimanaAnimationAction}
       />
     </GameObject>
   );

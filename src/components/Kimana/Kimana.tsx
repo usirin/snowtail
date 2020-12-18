@@ -33,15 +33,17 @@ export type AnimationAction =
   | "ReceiveHit"
   | "Run"
   | "Walk"
+  | "JumpPrep"
   | "JumpUp"
   | "JumpDown";
+
 type GLTFActions = Record<AnimationAction, THREE.AnimationAction>;
 
 const animationColors = {
   Idle: "rebeccapurple",
   Run: "hotpink",
   Walk: "hotpink",
-  Jump: "red",
+  JumpPrep: "green",
   JumpUp: "red",
   JumpDown: "yellow",
 };
@@ -82,7 +84,8 @@ export const Kimana: React.FC<Props> = ({
 
   const actions = useRef<GLTFActions>();
   useEffect(() => {
-    const JumpUp = AnimationUtils.subclip(animations[1], "JumpUp", 0, 11);
+    const JumpPrep = AnimationUtils.subclip(animations[1], "JumpPrep", 0, 3);
+    const JumpUp = AnimationUtils.subclip(animations[1], "JumpUp", 3, 11);
     const JumpDown = AnimationUtils.subclip(animations[1], "JumpDown", 11, 26);
 
     actions.current = {
@@ -91,16 +94,22 @@ export const Kimana: React.FC<Props> = ({
       ReceiveHit: mixer.clipAction(animations[2], group.current),
       Run: mixer.clipAction(animations[3], group.current),
       Walk: mixer.clipAction(animations[4], group.current),
+      JumpPrep: mixer.clipAction(JumpPrep, group.current),
       JumpUp: mixer.clipAction(JumpUp, group.current),
       JumpDown: mixer.clipAction(JumpDown, group.current),
     };
 
-    actions.current.Jump.setLoop(LoopOnce, 1);
+    actions.current.JumpPrep.setLoop(LoopOnce, 1);
     actions.current.JumpUp.setLoop(LoopOnce, 1);
     actions.current.JumpDown.setLoop(LoopOnce, 1);
 
+    actions.current.JumpPrep.clampWhenFinished = true;
     actions.current.JumpUp.clampWhenFinished = true;
     actions.current.JumpDown.clampWhenFinished = true;
+
+    // actions.current.JumpPrep.setDuration(3);
+    // actions.current.JumpUp.setDuration(3);
+    // actions.current.JumpDown.setDuration(3);
 
     return () => animations.forEach((clip) => mixer.uncacheClip(clip));
   }, [animations, mixer]);

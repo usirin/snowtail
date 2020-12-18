@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CanvasContext, useFrame } from "react-three-fiber";
 
 export interface StateBehavior {
@@ -39,23 +39,15 @@ export function useStateMachine<TContext = any>(
   const [currentState, setCurrentState] = useState(() => config.initialState);
   const [context] = useState(() => config.context);
 
-  const isTransitioning = useRef(false);
-
   const api = useMemo<StateMachineApi>(
     () => ({
       context,
       transition: (state: string) => {
-        isTransitioning.current = true;
         console.log({ to: state, from: currentState });
         const oldState = states[currentState];
         console.log("old state", currentState, oldState);
         for (let behavior of oldState.behaviors) {
           behavior.onExit?.(api);
-        }
-
-        const newState = states[state];
-        for (let behavior of newState.behaviors) {
-          behavior.onBeforeEnter?.(api);
         }
 
         setCurrentState(state);
@@ -77,15 +69,11 @@ export function useStateMachine<TContext = any>(
     const newState = states[currentState];
     console.log("new state", currentState, newState);
     for (let behavior of newState.behaviors) {
-      behavior.onBeforeEnter?.(api);
+      behavior.onEnter?.(api);
     }
-    isTransitioning.current = false;
   }, [api, currentState, states]);
 
   useFrame((context, delta) => {
-    // console.log("currentStaetl", currentState);
-    if (isTransitioning.current) return;
-
     const state = states[currentState];
     for (let behavior of state.behaviors) {
       behavior.update?.(api, delta, context);
