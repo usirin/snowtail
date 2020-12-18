@@ -1,5 +1,6 @@
 import { useBox } from "@react-three/cannon";
 import React, { MutableRefObject, useRef } from "react";
+import { useFrame } from "react-three-fiber";
 import {
   Kimana,
   AnimationAction as KimanaAnimationAction,
@@ -113,7 +114,9 @@ class Idle implements StateBehavior {
 
     if (moveLeftKey.pressed && moveRightKey.pressed) {
       api.context.moving = false;
-    } else if (moveLeftKey.pressed || moveRightKey.pressed) {
+    } else if (!moveLeftKey.pressed && !moveRightKey.pressed) {
+      api.context.moving = false;
+    } else {
       api.context.moving = true;
     }
   }
@@ -141,8 +144,8 @@ export const Player: React.FC = () => {
 
   const tweaks = useTweaks({
     regularMoveSpeed: 5,
-    jumpForce: 5,
-    jumpMoveSpeed: 3,
+    jumpForce: 8,
+    jumpMoveSpeed: 6,
   });
 
   const [state] = useStateMachine<PlayerAnimationState>({
@@ -194,7 +197,7 @@ export const Player: React.FC = () => {
       },
       JumpUp: {
         behaviors: [
-          new JumpUp({ mixer: mixerRef, player, jumpForce: 5 }),
+          new JumpUp({ mixer: mixerRef, player, jumpForce: tweaks.jumpForce }),
           new Move({
             player,
             inputManager: input,
@@ -215,14 +218,18 @@ export const Player: React.FC = () => {
     },
   });
 
+  useFrame((context, delta) => {
+    context.camera.position.x = player.position.get()[0];
+  });
+
   console.log({ state });
 
   return (
     <GameObject ref={ref}>
-      <mesh>
-        <boxBufferGeometry args={[1, 3, 1]} />
-        <meshPhongMaterial wireframe color="rebeccapurple" attach="material" />
-      </mesh>
+      {/*<mesh enabled>*/}
+      {/*  <boxBufferGeometry args={[1, 3, 1]} />*/}
+      {/*  <meshPhongMaterial wireframe color="rebeccapurple" attach="material" />*/}
+      {/*</mesh>*/}
       <Kimana
         onAnimationMixerCreated={(mixer) => (mixerRef.current = mixer)}
         action={state as KimanaAnimationAction}

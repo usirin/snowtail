@@ -37,7 +37,7 @@ export function useStateMachine<TContext = any>(
 ): [string, StateMachineApi<TContext>] {
   const [states] = useState(() => config.states);
   const [currentState, setCurrentState] = useState(() => config.initialState);
-  const [context] = useState(() => config.context);
+  const [context] = useState(() => ({ ...config.context }));
 
   const api = useMemo<StateMachineApi>(
     () => ({

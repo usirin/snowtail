@@ -183,7 +183,7 @@ const Platform: React.FC<{
 const Platforms = () => {
   return (
     <group>
-      <Platform position={[10, 2, 0]} />
+      <Platform position={[0, 2, 0]} />
       <Platform position={[10, 4, 0]} />
     </group>
   );
